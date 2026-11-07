@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Bomb Squad — Pass the Problem</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap');
+:root{--ink:#20243a;--cream:#fff8e8;--pink:#ff6685;--yellow:#ffd166;--blue:#54c7ec;--green:#62d6a6}
+*{box-sizing:border-box}body{margin:0;background:#1b2040;color:var(--ink);font-family:Nunito,system-ui,sans-serif;min-height:100vh;display:grid;place-items:center;padding:16px}
+.app{width:min(1100px,100%);background:var(--cream);border:5px solid #fff;border-radius:28px;box-shadow:0 18px 0 #10142c,0 28px 70px #090d25aa;overflow:hidden}
+.top{display:flex;justify-content:space-between;align-items:center;padding:16px 22px;background:#ffe6a7;border-bottom:3px solid #f4d98e}
+.logo{font-size:clamp(20px,4vw,32px);font-weight:1000;letter-spacing:-1px}.logo span{color:#f04d70}.tag{background:#fff;border-radius:99px;padding:7px 12px;font-size:12px;font-weight:900}
+main{padding:clamp(16px,3vw,30px)}.screen{display:none}.screen.active{display:block}
+h1{font-size:clamp(32px,6vw,58px);line-height:1;margin:8px 0 12px;letter-spacing:-2px}h2{margin:0 0 10px}p{color:#64677d;line-height:1.5}
+.hero{text-align:center;padding:28px 10px 18px}.bomb-hero{font-size:76px;filter:drop-shadow(0 7px 0 #e8b64e);animation:bob 1.8s infinite ease-in-out}@keyframes bob{50%{transform:translateY(-9px) rotate(7deg)}}
+.actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:22px 0}.btn{border:0;border-radius:14px;padding:13px 20px;font:900 15px Nunito;cursor:pointer;background:#ff6685;color:white;box-shadow:0 5px 0 #d94868;transition:.12s}.btn:active{transform:translateY(4px);box-shadow:0 1px 0 #d94868}.btn.secondary{background:#54c7ec;box-shadow:0 5px 0 #2898bd}.btn.dark{background:#303653;box-shadow:0 5px 0 #1d233b}.btn:disabled{opacity:.45;cursor:not-allowed}
+input{border:3px solid #e7dfcf;border-radius:12px;padding:12px 14px;font:800 15px Nunito;width:min(280px,100%);outline:none;background:white;color:#252943}input:focus{border-color:#54c7ec}
+.form{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin:14px 0}.note{font-size:12px;color:#777b90;text-align:center}.error{color:#e44364;font-weight:900;min-height:22px;text-align:center}
+.lobby{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{background:white;border:2px solid #eee5d6;border-radius:18px;padding:16px}.players{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.player-chip{padding:9px;border-radius:12px;background:#f7f4ee;font-weight:900}.player-dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:7px}
+.arena-wrap{position:relative;background:#c8f1dc;border:5px solid white;border-radius:22px;overflow:hidden;box-shadow:inset 0 0 0 3px #a2dfc0}
+canvas{display:block;width:100%;height:auto;touch-action:none}
+.hud{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px}.pill{background:#fff;border:2px solid #eee5d6;border-radius:99px;padding:8px 13px;font-weight:1000}.pill.hot{background:#ffe1e6;border-color:#ffb5c2;color:#d9365b}
+.controls{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}.legend{font-size:12px;color:#666b7f}.mobile-controls{display:none;gap:8px}.mobile-controls button{width:54px;height:48px;border:0;border-radius:12px;background:#303653;color:white;font-size:20px;font-weight:900}
+.result{text-align:center;padding:30px 10px}.winner{font-size:70px}.small{font-size:12px;color:#777b90}
+@media(max-width:650px){.lobby{grid-template-columns:1fr}.top{padding:12px 14px}.mobile-controls{display:flex}.controls .legend{display:none}}
+</style></head>
+<body><div class="app">
+<header class="top"><div class="logo">💣 BOMB <span>SQUAD</span></div><div class="tag">PASS THE PROBLEM</div></header>
+<main>
+<section id="home" class="screen active"><div class="hero"><div class="bomb-hero">💣</div><h1>DON'T HOLD<br>THE BOOM.</h1><p>Run. Tag. Pass it on. Whatever you do, don't be holding the bomb when the timer hits zero.</p>
+<div class="form"><input id="name" maxlength="16" placeholder="Your player name" value="Player"></div>
+<div class="actions"><button class="btn" id="create">CREATE ROOM</button><button class="btn secondary" id="showJoin">JOIN FRIENDS</button></div>
+<div id="joinForm" class="form" style="display:none"><input id="roomCode" maxlength="6" placeholder="ROOM CODE"><button class="btn secondary" id="join">JOIN ROOM</button></div><div class="error" id="homeError"></div><div class="note">2–8 players · Private rooms · Free to play</div></div></section>
+<section id="lobby" class="screen"><h1>THE HANGOUT</h1><p>Send this room code to your friends. The host can start when at least two players have joined.</p><div class="lobby">
+<div class="panel"><div class="small">ROOM CODE</div><div style="font-size:38px;font-weight:1000;letter-spacing:5px" id="codeDisplay">------</div><button class="btn secondary" id="copy">COPY INVITE CODE</button><p class="small" id="copyStatus"></p></div>
+<div class="panel"><h2>Players <span id="playerCount">0/8</span></h2><div class="players" id="playerList"></div></div></div>
+<div class="actions"><button class="btn" id="start">START GAME</button><button class="btn dark" id="backHome">LEAVE ROOM</button></div><div class="error" id="lobbyError"></div></section>
+<section id="game" class="screen"><div class="hud"><div class="pill" id="roundLabel">ROUND 1</div><div class="pill hot" id="timerLabel">💣 --</div><div class="pill" id="aliveLabel">👥 0 LEFT</div></div>
+<div class="arena-wrap"><canvas id="arena" width="960" height="600"></canvas></div>
+<div class="controls"><div class="legend">MOVE: WASD / ARROW KEYS · SPRINT: SHIFT · Touch another player to pass the bomb!</div><div class="mobile-controls"><button data-dir="up">↑</button><button data-dir="left">←</button><button data-dir="down">↓</button><button data-dir="right">→</button></div></div>
+<div class="actions"><button class="btn dark" id="leaveGame">LEAVE MATCH</button></div></section>
+<section id="result" class="screen"><div class="result"><div class="winner">🏆</div><h1 id="winnerTitle">YOU SURVIVED!</h1><p id="resultText">The arena has a new champion.</p><div class="actions"><button class="btn" id="rematch">PLAY AGAIN</button><button class="btn dark" id="returnLobby">BACK TO LOBBY</button></div><div class="small">Only the room host can start a rematch.</div></div></section>
+</main></div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket=io();let roomCode=null,isHost=false,state=null,myId=null,keys={},mobile={},lastInput=0;
+const $=id=>document.getElementById(id);
+function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));$(id).classList.add("active")}
+function err(id,msg){$(id).textContent=msg||""}
+socket.on("connect",()=>myId=socket.id);
+socket.on("joined",d=>{roomCode=d.code;isHost=d.host;$("codeDisplay").textContent=roomCode;show("lobby");err("homeError","");});
+socket.on("errorMessage",m=>{err($("game").classList.contains("active")?"lobbyError":"homeError",m)});
+socket.on("state",s=>{state=s;renderState(s)});
+$("create").onclick=()=>socket.emit("createRoom",{name:$("name").value});
+$("showJoin").onclick=()=>{$("joinForm").style.display="flex"};
+$("join").onclick=()=>socket.emit("joinRoom",{name:$("name").value,code:$("roomCode").value.trim()});
+$("start").onclick=()=>socket.emit("startGame");
+$("copy").onclick=async()=>{try{await navigator.clipboard.writeText(roomCode);$("copyStatus").textContent="Copied! Send it to your friends."}catch{$("copyStatus").textContent="Room code: "+roomCode}};
+$("backHome").onclick=$("leaveGame").onclick=()=>location.reload();
+$("rematch").onclick=()=>socket.emit("rematch");
+$("returnLobby").onclick=()=>show("lobby");
+function renderState(s){
+  $("playerCount").textContent=s.players.length+"/8";
+  $("playerList").innerHTML=s.players.map(p=>`<div class="player-chip"><span class="player-dot" style="background:${p.color}"></span>${escapeHtml(p.name)} ${p.id===myId?"(you)":""} ${p.alive?"":"💥"}</div>`).join("");
+  $("start").disabled=!isHost||s.players.length<2;
+  $("start").textContent=isHost?"START GAME":"WAITING FOR HOST";
+  if(s.phase==="playing"){show("game");$("roundLabel").textContent="ROUND "+s.round;$("timerLabel").textContent="💣 "+Math.max(0,s.bombTime).toFixed(1)+"s";$("aliveLabel").textContent="👥 "+s.players.filter(p=>p.alive).length+" LEFT";draw();}
+  else if(s.phase==="ended"){show("result");const w=s.players.find(p=>p.id===s.winner);$("winnerTitle").textContent=w? w.name+" WINS!":"NO SURVIVORS";$("resultText").textContent=s.message;}
+  else if(s.phase==="lobby" && roomCode){show("lobby");err("lobbyError",s.message);}
+}
+function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+const canvas=$("arena"),ctx=canvas.getContext("2d");
+function draw(){
+ if(!state)return;ctx.clearRect(0,0,960,600);
+ // pastel checkerboard floor
+ ctx.fillStyle="#c8f1dc";ctx.fillRect(0,0,960,600);
+ for(let y=0;y<600;y+=48)for(let x=0;x<960;x+=48)if((x/48+y/48)%2===0){ctx.fillStyle="#bce9d1";ctx.fillRect(x,y,48,48)}
+ // dotted arena edge
+ ctx.save();ctx.strokeStyle="#7ac9a5";ctx.lineWidth=9;ctx.setLineDash([12,13]);ctx.beginPath();ctx.arc(480,300,state.arenaRadius,0,Math.PI*2);ctx.stroke();ctx.restore();
+ // obstacles
+ [[210,160,72,38],[680,170,65,45],[270,420,58,48],[650,410,75,36],[475,130,42,30]].forEach((o,i)=>{ctx.fillStyle=["#f8a5b8","#f9c86b","#8cc9f0"][i%3];roundRect(ctx,o[0],o[1],o[2],o[3],12);ctx.fill();ctx.strokeStyle="#ffffff";ctx.lineWidth=4;ctx.stroke()});
+ // powerups
+ for(const p of state.powerups){ctx.beginPath();ctx.fillStyle=p.type==="shield"?"#65a9ff":"#ffcf55";ctx.arc(p.x,p.y,15,0,Math.PI*2);ctx.fill();ctx.font="18px sans-serif";ctx.textAlign="center";ctx.fillText(p.type==="shield"?"🛡️":"⚡",p.x,p.y+6)}
+ for(const p of state.players){
+  if(!p.alive)continue;
+  // shadow
+  ctx.beginPath();ctx.fillStyle="#5b8d7a55";ctx.ellipse(p.x,p.y+13,17,7,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.fillStyle=p.color;ctx.arc(p.x,p.y,17,0,Math.PI*2);ctx.fill();ctx.lineWidth=4;ctx.strokeStyle="#fff";ctx.stroke();
+  ctx.fillStyle="#242840";ctx.beginPath();ctx.arc(p.x-5,p.y-2,2.5,0,Math.PI*2);ctx.arc(p.x+5,p.y-2,2.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#303653";ctx.font="bold 13px Nunito";ctx.textAlign="center";ctx.fillText(p.name.slice(0,12),p.x,p.y-27);
+  if(p.id===myId){ctx.strokeStyle="#242840";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,24,0,Math.PI*2);ctx.stroke()}
+  if(p.hasBomb){ctx.font="28px sans-serif";ctx.fillText("💣",p.x,p.y-32)}
+  if(p.shield){ctx.font="20px sans-serif";ctx.fillText("🛡️",p.x+22,p.y-18)}
+ }
+ const me=state.players.find(p=>p.id===myId);
+ if(me&&!me.alive){ctx.fillStyle="#20243a";ctx.font="900 26px Nunito";ctx.textAlign="center";ctx.fillText("YOU'RE OUT! SPECTATING…",480,40)}
+ if(state.message){ctx.fillStyle="#303653";roundRect(ctx,260,548,440,36,12);ctx.fill();ctx.fillStyle="white";ctx.font="bold 15px Nunito";ctx.textAlign="center";ctx.fillText(state.message.slice(0,60),480,572)}
+}
+function roundRect(c,x,y,w,h,r){c.beginPath();c.roundRect(x,y,w,h,r)}
+function sendInput(){
+ const x=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0)+(mobile.right?1:0)-(mobile.left?1:0);
+ const y=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0)+(mobile.down?1:0)-(mobile.up?1:0);
+ socket.emit("input",{x,y,sprint:!!keys.Shift});
+}
+window.addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();keys[e.key]=true;});
+window.addEventListener("keyup",e=>keys[e.key]=false);
+document.querySelectorAll("[data-dir]").forEach(b=>{const d=b.dataset.dir;b.addEventListener("pointerdown",e=>{e.preventDefault();mobile[d]=true});["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,()=>mobile[d]=false))});
+setInterval(()=>{if($("game").classList.contains("active"))sendInput()},50);
+</script></body></html>
